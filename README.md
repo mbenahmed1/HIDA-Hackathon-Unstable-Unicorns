@@ -69,7 +69,7 @@ ws_allocate <YOUR_GROUP_NAME>
 cd /hkfs/work/workspace_haic/scratch/<YOUR_USER_ID>-<YOUR_GROUP_NAME>
 ```
 You then have to give the other group members and the tutors access to the workspace you created.
-Add the handles of the team members to `team.csv`
+Add the handles of the team members to `team.csv`. Then run:
 
 ```
 ./team-access.sh
