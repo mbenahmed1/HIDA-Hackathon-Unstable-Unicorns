@@ -160,5 +160,5 @@ Once the instance segmentation model is trained the final segmentation is assess
 Adapt the paths to your group workspace and run it via:
 
 ```
-sbatch predict.py
+sbatch predict.sh
 ```
