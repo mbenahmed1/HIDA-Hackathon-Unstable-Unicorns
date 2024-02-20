@@ -62,14 +62,13 @@ Additionally, bash scripts for running the training, inference and evaluation ar
 
 ## HAICORE Setup
 
-The HAICORE cluster filesystem is organized in workspaces. Each group can create its own workspace that should be named after your group ID. In this workspace you will develop your code, create your virtual environment, save models and preprocessed versions of data and so on. Once you're logged in to HAICORE, your first step is going to be creating your group workspace. For the following steps please substitute `<YOUR_GROUP_NAME>` by your group ID and `<YOUR_USER_ID>` with the user name of the group member who is creating the workspace.
+The HAICORE cluster filesystem is organized in workspaces. Each group has its own workspace that is named after your group name. In this workspace you will develop your code, create your virtual environment, save models and preprocessed versions of data and so on. Once you're logged in to HAICORE, your first step is going to your group workspace. For the following steps please substitute `<YOUR_GROUP_NAME>` by your group ID.
 
 ```
-ws_allocate <YOUR_GROUP_NAME>
-cd /hkfs/work/workspace_haic/scratch/<YOUR_USER_ID>-<YOUR_GROUP_NAME>
+cd /hkfs/work/workspace_haic/scratch/qx6387-<YOUR_GROUP_NAME>
 ```
-You then have to give the other group members and the tutors access to the workspace you created.
-Add the handles of the team members to `team.csv`. Then run:
+If you need to update access rights to folders and files in the workspace, you can run `team-access.sh`.
+Add the handles of the team members to `team.csv`
 
 ```
 ./team-access.sh
@@ -81,7 +80,7 @@ You can use the same mechanism to give the tutors access for the performance eva
 Clone this repository to your workspace. 
 
 ```
-cd /hkfs/work/workspace_haic/scratch/<YOUR_USER_ID>-<YOUR_GROUP_NAME>
+cd /hkfs/work/workspace_haic/scratch/qx6387-<YOUR_GROUP_NAME>
 git clone https://github.com/Helmholtz-AI-Energy/HIDA-Hackathon.git
 ```
 
@@ -92,7 +91,7 @@ Follow the instructions to create a virtual environment. Optionally, you can ins
 #### Go to your Workspace
 
 ```
-cd /hkfs/work/workspace_haic/scratch/<YOUR_USER_ID>-<YOUR_GROUP_NAME>
+cd /hkfs/work/workspace_haic/scratch/qx6387-<YOUR_GROUP_NAME>
 ```
 
 ### Creating a Virtual Environment
