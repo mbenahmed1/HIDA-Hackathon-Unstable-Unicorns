@@ -8,6 +8,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=76
 #SBATCH --time=03:00:00
+#SBATCH --reservation=hida
 
 export CUDA_CACHE_DISABLE=1
 export OMP_NUM_THREADS=76
