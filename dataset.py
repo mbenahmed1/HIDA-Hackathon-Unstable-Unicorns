@@ -10,7 +10,8 @@ from PIL import Image, ImageDraw
 
 
 class DroneImages(torch.utils.data.Dataset):
-    def __init__(self, root: str = 'data', predict: bool = False):
+    #def __init__(self, root: str = 'data', predict: bool = False):
+    def __init__(self, root: str = 'data', predict: bool = False, return_RGB: bool = True, return_dict_y: bool = False):
         self.root = pathlib.Path(root)
         self.predict = predict
         if self.predict:
@@ -21,6 +22,9 @@ class DroneImages(torch.utils.data.Dataset):
             self.old_ids, self.old_images, self.old_polys, self.old_bboxes = self.ids, self.images, self.polys, self.bboxes
             self.parse_json(self.root / 'new_descriptor.json')
             self.new_ids, self.new_images, self.new_polys, self.new_bboxes = self.ids, self.images, self.polys, self.bboxes
+
+        self.return_RGB = return_RGB
+        self.return_dict_y = return_dict_y
 
     def parse_json(self, path: pathlib.Path):
         """
@@ -104,5 +108,11 @@ class DroneImages(torch.utils.data.Dataset):
         }
         x = torch.tensor(x, dtype=torch.float).permute((2, 0, 1))
         x = x / 255.
+
+        if self.return_RGB==False:
+            x = x[3:] # return only 3rd and 4th channel (exclude RGB and include only depth height)
+            
+        if self.return_dict_y==False:
+            y = y['masks'].sum(dim=0).clamp(0., 1.)
 
         return x, y
