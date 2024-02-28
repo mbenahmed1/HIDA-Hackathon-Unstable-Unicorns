@@ -6,13 +6,16 @@ import numpy as np
 import torch
 import torch.utils.data
 
+import copy
+
 from PIL import Image, ImageDraw
 
 from monai.transforms import ResizeWithPadOrCrop
 import torchvision
+import random
 
 class DroneImages(torch.utils.data.Dataset):
-    def __init__(self, root: str = 'data', predict: bool = False, in_channels: int = 5, return_dict_y: bool = True):
+    def __init__(self, root: str = 'data', predict: bool = False, in_channels: int = 5, return_dict_y: bool = True, pair_transforms = None):
         self.root = pathlib.Path(root)
         self.predict = predict
         if self.predict:
@@ -28,6 +31,7 @@ class DroneImages(torch.utils.data.Dataset):
         self.in_channels = in_channels
         self.return_dict_y = return_dict_y
         self.resizer = ResizeWithPadOrCrop(spatial_size = (2688, 3392))
+        self.pair_transforms = pair_transforms
         
     def parse_json(self, path: pathlib.Path):
         """
@@ -126,5 +130,19 @@ class DroneImages(torch.utils.data.Dataset):
         if self.return_dict_y==False:
             y = self.resizer(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])
             x = self.resizer(x)
+        
+        x_non_T = copy.deepcopy(x)
+        y_non_T = copy.deepcopy(y)
+
+        if self.pair_transforms:
+            for transform in self.pair_transforms:
+                if random.uniform(0, 1) <= 0.5:
+                    print('apply transform')
+                    x = transform(x)
+                    if 'masks' in y:
+                        y['masks'] = transform(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])
+                    else:
+                        y = transform(y)
+        
 
         return x, y
