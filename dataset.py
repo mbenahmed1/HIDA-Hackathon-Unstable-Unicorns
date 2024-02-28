@@ -145,6 +145,12 @@ class DroneImages(torch.utils.data.Dataset):
                 y['masks'] = horizontal_flip(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])
                 y['boxes'][:,0] -= 2 * (y['boxes'][:,0] - W / 2)
                 y['boxes'][:,2] -= 2 * (y['boxes'][:,2] - W / 2)
+
+                swap_boxes = copy.deepcopy(y['boxes'])
+                swap_boxes[:,0] = y['boxes'][:,2]
+                swap_boxes[:,2] = y['boxes'][:,0]
+
+                y['boxes'] = swap_boxes
             else:
                 y = horizontal_flip(y)
 
