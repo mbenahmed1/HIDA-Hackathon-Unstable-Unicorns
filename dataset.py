@@ -140,7 +140,6 @@ class DroneImages(torch.utils.data.Dataset):
 
         # horizontal flip
         if random.uniform(0, 1) <= 0.5:
-            print('Apply horizontal flip')
             x = horizontal_flip(x)
             if 'masks' in y:
                 y['masks'] = horizontal_flip(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])
@@ -151,7 +150,6 @@ class DroneImages(torch.utils.data.Dataset):
 
         # random crop
         if random.uniform(0, 1) <= 0.5:
-            print('Apply random crop')
             i, j, h, w = v2.RandomCrop.get_params(
             x, output_size=(int(H / 2), int(W / 2)))
             x = crop(x, i, j, h, w)
@@ -164,4 +162,4 @@ class DroneImages(torch.utils.data.Dataset):
                 y = crop(y, i, j, h, w)
                 y = resize(y, [H, W])
 
-        return x, y, x_non_T, y_non_T
+        return x, y
