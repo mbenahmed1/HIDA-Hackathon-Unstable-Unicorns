@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 from monai.transforms import ResizeWithPadOrCrop
 
 class DroneImages(torch.utils.data.Dataset):
-    def __init__(self, root: str = 'data', predict: bool = False, return_RGB = 5, return_dict_y: bool = True):
+    def __init__(self, root: str = 'data', predict: bool = False, in_channels = 5, return_dict_y: bool = True):
         self.root = pathlib.Path(root)
         self.predict = predict
         if self.predict:
@@ -23,8 +23,8 @@ class DroneImages(torch.utils.data.Dataset):
             self.parse_json(self.root / 'new_descriptor.json')
             self.new_ids, self.new_images, self.new_polys, self.new_bboxes = self.ids, self.images, self.polys, self.bboxes
             
-        assert return_RGB in (2,3,5), f'return_RGB can only have values of 2, 3 or 5. Given as {return_RGB}'
-        self.return_RGB = return_RGB
+        assert in_channels in (2,3,5), f'in_channels can only have values of 2, 3 or 5. Given as {in_channels}'
+        self.in_channels = in_channels
         self.return_dict_y = return_dict_y
         self.resizer = ResizeWithPadOrCrop(spatial_size = (2688, 3392))
         
@@ -111,10 +111,10 @@ class DroneImages(torch.utils.data.Dataset):
         x = torch.tensor(x, dtype=torch.float).permute((2, 0, 1))
         x = x / 255.
 
-        if self.return_RGB==2:
+        if self.in_channels==2:
             x = x[3:] # return only 3rd and 4th channel (exclude RGB and include only depth height)
         
-        elif self.return_RGB==3:
+        elif self.in_channels==3:
             dummy_img_rgb = torch.sum(x[:3], dim=0, keepdim=True)
             dummy_img_rest = x[3:]
             x = torch.cat([dummy_img_rgb, dummy_img_rest])
