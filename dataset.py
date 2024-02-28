@@ -8,6 +8,7 @@ import torch.utils.data
 
 from PIL import Image, ImageDraw
 
+from monai.transforms import ResizeWithPadOrCrop
 
 class DroneImages(torch.utils.data.Dataset):
     def __init__(self, root: str = 'data', predict: bool = False, return_RGB: bool = True, return_dict_y: bool = True):
@@ -24,7 +25,8 @@ class DroneImages(torch.utils.data.Dataset):
             
         self.return_RGB = return_RGB
         self.return_dict_y = return_dict_y
-
+        self.resizer = ResizeWithPadOrCrop(spatial_size = (2688, 3392))
+        
     def parse_json(self, path: pathlib.Path):
         """
         Reads and indexes the descriptor.json
@@ -112,6 +114,7 @@ class DroneImages(torch.utils.data.Dataset):
             x = x[3:] # return only 3rd and 4th channel (exclude RGB and include only depth height)
             
         if self.return_dict_y==False:
-            y = y['masks'].sum(dim=0).clamp(0., 1.)
+            y = self.resizer(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])
+            x = self.resizer(x)
 
         return x, y
