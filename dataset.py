@@ -135,17 +135,19 @@ class DroneImages(torch.utils.data.Dataset):
         x_non_T = copy.deepcopy(x)
         y_non_T = copy.deepcopy(y)
 
+        H = 2680
+        W = 3370
+
         # horizontal flip
         if random.uniform(0, 1) <= 0.5:
             print('Apply horizontal flip')
             x = horizontal_flip(x)
             if 'masks' in y:
                 y['masks'] = horizontal_flip(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])
+                y['boxes'][:,0] -= 2 * (y['boxes'][:,0] - W / 2)
+                y['boxes'][:,2] -= 2 * (y['boxes'][:,2] - W / 2)
             else:
                 y = horizontal_flip(y)
-
-        H = 2680
-        W = 3370
 
         # random crop
         if random.uniform(0, 1) <= 0.5:
@@ -162,4 +164,4 @@ class DroneImages(torch.utils.data.Dataset):
                 y = crop(y, i, j, h, w)
                 y = resize(y, [H, W])
 
-        return x, y
+        return x, y, x_non_T, y_non_T
