@@ -2,7 +2,7 @@ from torch import nn
 
 from torchvision.models.detection import maskrcnn_resnet50_fpn_v2
 
-from monai.networks.nets import UNet, SwinUNETR
+from monai.networks.nets import UNet, SwinUNETR, SegResNetDS
 
 def MaskRCNN(in_channels=5, num_classes=2, image_mean=None, image_std=None, **kwargs):
     if image_mean is None:
@@ -49,3 +49,11 @@ def SwinUNETR_model(in_channels=5, num_classes=2, **kwargs):
                 )
         
         return model
+
+
+
+def SegResNetDS_model(in_channels=5, num_classes=2, **kwargs):
+    model = SegResNetDS(in_channels=in_channels, num_classes=num_classes)
+
+
+    return model
