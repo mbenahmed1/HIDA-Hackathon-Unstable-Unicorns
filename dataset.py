@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 from monai.transforms import ResizeWithPadOrCrop
 
 class DroneImages(torch.utils.data.Dataset):
-    def __init__(self, root: str = 'data', predict: bool = False, return_RGB = 5, return_dict_y: bool = False):
+    def __init__(self, root: str = 'data', predict: bool = False, return_RGB = 5, return_dict_y: bool = True):
         self.root = pathlib.Path(root)
         self.predict = predict
         if self.predict:
