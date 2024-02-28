@@ -137,7 +137,6 @@ class DroneImages(torch.utils.data.Dataset):
         if self.pair_transforms:
             for transform in self.pair_transforms:
                 if random.uniform(0, 1) <= 0.5:
-                    print('apply transform')
                     x = transform(x)
                     if 'masks' in y:
                         y['masks'] = transform(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])

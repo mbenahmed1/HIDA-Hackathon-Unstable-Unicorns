@@ -12,6 +12,7 @@ from dataset import DroneImages
 from model import MaskRCNN
 from tqdm import tqdm
 from torchmetrics import JaccardIndex
+from torchvision.transforms.v2.functional import horizontal_flip
 
 
 def collate_fn(batch) -> tuple:
@@ -29,7 +30,7 @@ def get_device() -> torch.device:
     return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def train(hyperparameters: argparse.Namespace):
+def train(hyperparameters: argparse.Namespace, pair_transforms):
     # set fixed seeds for reproducible execution
     random.seed(hyperparameters.seed)
     np.random.seed(hyperparameters.seed)
@@ -40,7 +41,7 @@ def train(hyperparameters: argparse.Namespace):
     print(f'Training on {device}')
 
     # set up the dataset
-    drone_images = DroneImages(hyperparameters.root)
+    drone_images = DroneImages(hyperparameters.root, pair_transforms=pair_transforms)# , return_dict_y=False)
     train_data, test_data = torch.utils.data.random_split(drone_images, [0.8, 0.2])
 
     # initialize MaskRCNN model
@@ -129,5 +130,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--seed', default=42, help='constant random seed for reproduction', type=int)
     parser.add_argument('--root', default='/hkfs/work/workspace_haic/scratch/qx6387-hida-hackathon-data/train', help='path to the data root', type=str)
 
+    pair_transforms = [
+        horizontal_flip
+    ]
+
     arguments = parser.parse_args()
-    train(arguments)
+    train(arguments, pair_transforms=pair_transforms)
