@@ -13,9 +13,11 @@ from PIL import Image, ImageDraw
 from monai.transforms import ResizeWithPadOrCrop
 import torchvision
 import random
+from torchvision.transforms.v2.functional import horizontal_flip, crop, resize
+from torchvision.transforms import v2
 
 class DroneImages(torch.utils.data.Dataset):
-    def __init__(self, root: str = 'data', predict: bool = False, in_channels: int = 5, return_dict_y: bool = True, pair_transforms = None):
+    def __init__(self, root: str = 'data', predict: bool = False, in_channels: int = 5, return_dict_y: bool = True):
         self.root = pathlib.Path(root)
         self.predict = predict
         if self.predict:
@@ -31,7 +33,6 @@ class DroneImages(torch.utils.data.Dataset):
         self.in_channels = in_channels
         self.return_dict_y = return_dict_y
         self.resizer = ResizeWithPadOrCrop(spatial_size = (2688, 3392))
-        self.pair_transforms = pair_transforms
         
     def parse_json(self, path: pathlib.Path):
         """
@@ -134,14 +135,31 @@ class DroneImages(torch.utils.data.Dataset):
         x_non_T = copy.deepcopy(x)
         y_non_T = copy.deepcopy(y)
 
-        if self.pair_transforms:
-            for transform in self.pair_transforms:
-                if random.uniform(0, 1) <= 0.5:
-                    x = transform(x)
-                    if 'masks' in y:
-                        y['masks'] = transform(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])
-                    else:
-                        y = transform(y)
-        
+        # horizontal flip
+        if random.uniform(0, 1) <= 0.5:
+            print('Apply horizontal flip')
+            x = horizontal_flip(x)
+            if 'masks' in y:
+                y['masks'] = horizontal_flip(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :])
+            else:
+                y = horizontal_flip(y)
+
+        H = 2680
+        W = 3370
+
+        # random crop
+        if random.uniform(0, 1) <= 0.5:
+            print('Apply random crop')
+            i, j, h, w = v2.RandomCrop.get_params(
+            x, output_size=(int(H / 2), int(W / 2)))
+            x = crop(x, i, j, h, w)
+            x = resize(x, [H, W])
+
+            if 'masks' in y:
+                y['masks'] = crop(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :], i, j, h, w)
+                y['masks'] = resize(y['masks'].sum(dim=0).clamp(0., 1.)[None, :, :], [H, W], interpolation=0)
+            else:
+                y = crop(y, i, j, h, w)
+                y = resize(y, [H, W])
 
         return x, y
