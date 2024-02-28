@@ -9,6 +9,7 @@ import torch.utils.data
 from PIL import Image, ImageDraw
 
 from monai.transforms import ResizeWithPadOrCrop
+import torchvision
 
 class DroneImages(torch.utils.data.Dataset):
     def __init__(self, root: str = 'data', predict: bool = False, in_channels = 5, return_dict_y: bool = True):
@@ -115,7 +116,8 @@ class DroneImages(torch.utils.data.Dataset):
             x = x[3:] # return only 3rd and 4th channel (exclude RGB and include only depth height)
         
         elif self.in_channels==3:
-            dummy_img_rgb = torch.sum(x[:3], dim=0, keepdim=True)
+            #dummy_img_rgb = torch.sum(x[:3], dim=0, keepdim=True)
+            dummy_img_rgb = torchvision.transforms.functional.rgb_to_grayscale(x[:3])
             dummy_img_rest = x[3:]
             x = torch.cat([dummy_img_rgb, dummy_img_rest])
         
