@@ -12,61 +12,54 @@ from torchmetrics import JaccardIndex
 from model import MaskRCNN
 from tqdm import tqdm
 
+from model import UNet_model, SwinUNETR_model, EfficientUNet_model, UNet_small_model, EfficientUNet_small_model
 
-def collate_fn(batch) -> tuple:
-    return tuple(zip(*batch))
-
-
-def instance_to_semantic_mask(pred, target):
-    pred_mask = torch.stack([p['masks'].sum(dim=0).clamp(0., 1.).squeeze() for p in pred])  # [batch_size, width, height]
-    target_mask = torch.stack([t['masks'].sum(dim=0).clamp(0., 1.).squeeze() for t in target])  # [batch_size, width, height]
-
-    return pred_mask, target_mask
+model_zoo = {"unet":UNet_model, "swin":SwinUNETR_model, "effunet": EfficientUNet_model,
+             "unet_small":UNet_small_model, "effunet_small":EfficientUNet_small_model}
 
 
 def get_device() -> torch.device:
     return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def predict(hyperparameters: argparse.Namespace):
+def predict(args: argparse.Namespace):
     # set fixed seeds for reproducible execution
-    random.seed(hyperparameters.seed)
-    np.random.seed(hyperparameters.seed)
-    torch.manual_seed(hyperparameters.seed)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
 
     # determines the execution device, i.e. CPU or GPU
     device = get_device()
     print(f'Training on {device}')
 
     # set up the dataset
-    drone_images = DroneImages(hyperparameters.root, True)
-    test_data = drone_images
+    drone_images = get_DroneImages_datalist(args.root, predict=True)
+    test_data = get_DroneImages_dataset(drone_images, augmentation = False, in_channels = args.in_channels)
 
     # initialize the U-Net model
-    model = MaskRCNN()
-    if hyperparameters.model:
-        print(f'Restoring model checkpoint from {hyperparameters.model}')
-        model.load_state_dict(torch.load(hyperparameters.model))
+    model = model_zoo[args.model](in_channels=args.in_channels)
+    model.to(device)
+    
+    if args.checkpoint:
+        print(f'Restoring model checkpoint from {args.checkpoint}')
+        model.load_state_dict(torch.load(args.checkpoint)["model"])
     model.to(device)
 
     # set the model in evaluation mode
     model.eval()
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=hyperparameters.batch, collate_fn=collate_fn)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch)
 
     # test procedure
     test_metric = JaccardIndex(task='binary')
     test_metric = test_metric.to(device)
 
     for i, batch in enumerate(tqdm(test_loader, desc='test ')):
-        x_test, test_label = batch
-        x_test = list(image.to(device) for image in x_test)
-        test_label = [{k: v.to(device) for k, v in l.items()} for l in test_label]
+        img_test, label_test = batch["image"].to(device), batch["label"].to(device)
 
         # score_threshold = 0.7
         with torch.no_grad():
-            test_predictions = model(x_test)
-
-            test_metric(*instance_to_semantic_mask(test_predictions, test_label))
+            test_predictions = model(img_test)
+            test_metric(test_predictions.argmax(axis=1)*1., label_test[:, 0, :, :])
 
     print(f'Test IoU: {test_metric.compute()}')
 
@@ -74,7 +67,9 @@ def predict(hyperparameters: argparse.Namespace):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--batch', default=1, help='batch size', type=int)
-    parser.add_argument('-m', '--model', default='checkpoint.pt', help='model checkpoint', type=str)
+    parser.add_argument('--in_channels', default=2, help='number of channels', type=int)
+    parser.add_argument('--model', default = "unet", choices=['unet', 'swin', 'effunet', 'unet_small', 'effunet_small'])
+    parser.add_argument('-c', '--checkpoint', default='checkpoint.pt', help='model checkpoint', type=str)
     parser.add_argument('-s', '--seed', default=42, help='constant random seed for reproduction', type=int)
     parser.add_argument('root', help='path to the data root', type=str)
 

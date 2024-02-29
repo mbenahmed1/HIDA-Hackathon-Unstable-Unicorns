@@ -10,16 +10,19 @@ import torch.utils.data
 from monai.losses import DiceCELoss,DiceLoss
 import os
 
-from dataset import DroneImages
-from model import UNet_model, SwinUNETR_model
+from model import UNet_model, SwinUNETR_model, EfficientUNet_model, UNet_small_model, EfficientUNet_small_model
 from tqdm import tqdm
 from torchmetrics import JaccardIndex
 from torch.utils.tensorboard import SummaryWriter
 
 from lr_scheduler import WarmupCosineSchedule
+from dataset_monai import get_DroneImages_datalist, get_DroneImages_dataset
 
-model_zoo = {"unet":UNet_model, "swin":SwinUNETR_model}
+model_zoo = {"unet":UNet_model, "swin":SwinUNETR_model, "effunet": EfficientUNet_model,
+             "unet_small":UNet_small_model, "effunet_small":EfficientUNet_small_model}
+
 loss_zoo = {"dice":DiceLoss, "diceCE":DiceCELoss}
+
 def get_device() -> torch.device:
     return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -45,9 +48,14 @@ def train(args: argparse.Namespace):
     device = get_device()
     print(f'Training on {device}')
 
-    # set up the dataset
-    drone_images = DroneImages(args.root, in_channels=args.in_channels, return_dict_y=False)
-    train_data, test_data = torch.utils.data.random_split(drone_images, [0.8, 0.2])
+    # set up the datalist
+    drone_images = get_DroneImages_datalist(args.root, predict=False)
+    train_images, test_images = drone_images[:579], drone_images[579:]
+    
+    # get the datasets
+    train_data = get_DroneImages_dataset(train_images, augmentation = args.augmentation, in_channels = args.in_channels)
+    test_data = get_DroneImages_dataset(test_images, augmentation = False, in_channels = args.in_channels)
+   
 
     # initialize MaskRCNN model
     model = model_zoo[args.model](in_channels=args.in_channels)
@@ -70,7 +78,7 @@ def train(args: argparse.Namespace):
     
     scheduler = WarmupCosineSchedule(optimizer, warmup_steps=warmup_steps, t_total=t_total)
     
-    if args.pretrained is not "none":
+    if args.pretrained != "none":
         best_iou = resume_training(model, optimizer, scheduler, args.pretrained)
 
     for epoch in range(args.epochs):
@@ -84,7 +92,7 @@ def train(args: argparse.Namespace):
 
         for i, batch in enumerate(tqdm(train_loader, desc='train')):
             global_step = epoch*len(train_loader) + i
-            img, label = batch[0].to(device), batch[1].to(device)
+            img, label = batch["image"].to(device), batch["label"].to(device)
             
             optimizer.zero_grad()
             outputs = model(img)
@@ -98,13 +106,13 @@ def train(args: argparse.Namespace):
 
             # compute metric
             with torch.no_grad():
-                train_metric(outputs.argmax(axis=1)*1., label.squeeze())
+                train_metric(outputs.argmax(axis=1)*1., label[:, 0, :, :])
             writer.add_scalar("train/loss", scalar_value=loss.item(), global_step=global_step)
             
 
         train_loss /= len(train_loader)
 
-        writer.add_scaler("train/IoU", scalar_value=train_metric.compute(), global_step=global_step )
+        writer.add_scalar("train/IoU", scalar_value=train_metric.compute(), global_step=global_step )
         # set the model in evaluation mode
         model.eval()
         test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.batch)
@@ -115,25 +123,25 @@ def train(args: argparse.Namespace):
 
         test_losses = []
         
-        idx_plot = torch.randint(0, len(test_loader))
+        idx_plot = torch.randint(0, len(test_loader), (1,)).item()
         for i, batch in enumerate(tqdm(test_loader, desc='test ')):
-            img_test, label_test = batch[0].to(device), batch[1].to(device)
+            img_test, label_test = batch["image"].to(device), batch["label"].to(device)
 
             with torch.no_grad():
                 test_predictions = model(img_test)
                 test_loss = loss_function(test_predictions, label_test)
                 test_losses.append(test_loss.item())
-                test_metric(test_predictions.argmax(axis=1)*1., label_test.squeeze())
+                test_metric(test_predictions.argmax(axis=1)*1., label_test[:, 0, :, :])
             
             if idx_plot == i:
                 for idx_ch, plot_img in enumerate(img_test[0]):
                     writer.add_image(f"valid_img/ch_{idx_ch}", plot_img, global_step, dataformats="HW")
                 writer.add_image(f"valid_img/prediction", test_predictions.argmax(axis=1)[0]*1., global_step, dataformats="HW")
-                writer.add_image(f"valid_img/ground_truth", label_test.squeeze()[0], global_step, dataformats="HW")
+                writer.add_image(f"valid_img/ground_truth", label_test[0, 0], global_step, dataformats="HW")
                 
-        avg_test_loss = torch.mean(test_losses)
-        writer.add_scaler("valid/loss", scalar_value=avg_test_loss, global_step=global_step )
-        writer.add_scaler("valid/IoU", scalar_value=test_metric.compute(), global_step=global_step )
+        avg_test_loss = np.mean(test_losses)
+        writer.add_scalar("valid/loss", scalar_value=avg_test_loss, global_step=global_step )
+        writer.add_scalar("valid/IoU", scalar_value=test_metric.compute(), global_step=global_step )
        
         # output the losses
         print(f'Epoch {epoch}')
@@ -170,8 +178,8 @@ if __name__ == '__main__':
     parser.add_argument('--logdir', default='runs', help='path to the root for logdir', type=str)
     parser.add_argument('--pretrained', default='none', help='path to pretrained checkoint', type=str)
     parser.add_argument('--lossfn', default = "diceCE", choices=['dice', 'diceCE'])
-    parser.add_argument('--model', default = "unet", choices=['unet', 'swin'])
-    parser.add_argument('--root', default='/hkfs/work/workspace_haic/scratch/qx6387-hida-hackathon-data/train', help='path to the data root', type=str)
+    parser.add_argument('--model', default = "unet", choices=['unet', 'swin', 'effunet', 'unet_small', 'effunet_small'])
+    parser.add_argument('--root', default='hkfs/work/workspace_haic/scratch/qx6387-hida-hackathon-data/train', help='path to the data root', type=str)
     
     
     arguments = parser.parse_args()
@@ -181,5 +189,5 @@ if __name__ == '__main__':
     arguments.logdir += f"/logs_model_{arguments.model}_loss_{arguments.lossfn}_lr_{arguments.lr}_nepochs_{arguments.epochs}_augment_{arguments.augmentation}_in_channels_{arguments.in_channels}"
     os.makedirs(arguments.logdir, exist_ok=True)
     
-    
+        
     train(arguments)
