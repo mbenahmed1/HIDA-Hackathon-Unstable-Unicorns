@@ -1,0 +1,15 @@
+jupyter_*.txt
+train_*.txt
+*.ipynb
+__pycache__/
+*.pt
+runs/
+checkpoints/
+slurm_logs/
+jupyter-*
+train_swin.py
+train_swin.sh
+train_unet_monai_metric.py
+train_unet_monai_metric.sh
+train_unet.py
+train_unet.sh
