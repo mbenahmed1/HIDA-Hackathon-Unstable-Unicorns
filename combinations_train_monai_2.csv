@@ -1,0 +1,7 @@
+model,augmentation,in_channels,batch_size
+effunet_small,True,2,1
+effunet_small,True,3,1
+effunet_small,True,5,1
+unet_small,True,2,2
+unet_small,True,3,2
+unet_small,True,5,2
