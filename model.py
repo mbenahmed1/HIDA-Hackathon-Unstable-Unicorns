@@ -2,7 +2,7 @@ from torch import nn
 
 from torchvision.models.detection import maskrcnn_resnet50_fpn_v2
 
-from monai.networks.nets import UNet, SwinUNETR
+from monai.networks.nets import UNet, SwinUNETR, FlexibleUNet
 
 def MaskRCNN(in_channels=5, num_classes=2, image_mean=None, image_std=None, **kwargs):
     if image_mean is None:
@@ -20,7 +20,6 @@ def MaskRCNN(in_channels=5, num_classes=2, image_mean=None, image_std=None, **kw
     return model
 
 def UNet_model(in_channels=5, num_classes=2, **kwargs):
-    
     model = UNet(
         spatial_dims=2,
         in_channels=in_channels,
@@ -29,6 +28,20 @@ def UNet_model(in_channels=5, num_classes=2, **kwargs):
         strides=(2, 2, 2, 2, 2),
         num_res_units=2,
         dropout = 0.2
+    )
+    
+    return model
+
+
+def UNet_small_model(in_channels=5, num_classes=2, **kwargs):
+    model = UNet(
+        spatial_dims=2,
+        in_channels=in_channels,
+        out_channels=num_classes,
+        channels=(8, 16, 32, 64),
+        strides=(2, 2, 2),
+        num_res_units=2,
+        dropout = 0.5
     )
     
     return model
@@ -47,5 +60,21 @@ def SwinUNETR_model(in_channels=5, num_classes=2, **kwargs):
                     use_checkpoint=True,
                     use_v2=True
                 )
+        
+        return model
+    
+def EfficientUNet_model(in_channels=2, num_classes=2, **kwargs):
+        model = FlexibleUNet(pretrained=True, 
+                             in_channels=in_channels, 
+                             out_channels=num_classes, 
+                             backbone="efficientnet-b1")
+        
+        return model
+    
+def EfficientUNet_small_model(in_channels=2, num_classes=2, **kwargs):
+        model = FlexibleUNet(pretrained=True, 
+                             in_channels=in_channels, 
+                             out_channels=num_classes, 
+                             backbone="efficientnet-b0")
         
         return model
